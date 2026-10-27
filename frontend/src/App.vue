@@ -1,5 +1,267 @@
 <script setup>
-// 第一阶段只搭空页面，不在这里放 ECharts 或 Agent 业务逻辑。
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import * as echarts from 'echarts'
+
+const radarChartRef = ref(null)
+
+let radarChart = null
+let resizeObserver = null
+let resizeFrame = 0
+
+const emotionData = [
+  { name: '焦虑', value: 80, color: '#fb7185' },
+  { name: '喜悦', value: 20, color: '#facc15' },
+  { name: '孤独', value: 60, color: '#60a5fa' },
+  { name: '期待', value: 40, color: '#c084fc' },
+  { name: '平静', value: 50, color: '#5eead4' },
+]
+
+const dominantEmotion = emotionData.reduce((current, item) =>
+  item.value > current.value ? item : current,
+)
+
+const createRadarOption = () => ({
+  backgroundColor: 'transparent',
+  animationDuration: 1400,
+  animationDurationUpdate: 900,
+  animationEasing: 'cubicOut',
+  color: ['#a855f7'],
+
+  aria: {
+    enabled: true,
+    description: '当前情绪雷达图：焦虑80，喜悦20，孤独60，期待40，平静50。',
+  },
+
+  tooltip: {
+    trigger: 'item',
+    confine: true,
+    backgroundColor: 'rgba(34, 27, 58, 0.94)',
+    borderColor: 'rgba(216, 180, 254, 0.55)',
+    borderWidth: 1,
+    padding: 0,
+    textStyle: {
+      color: '#ffffff',
+      fontSize: 12,
+    },
+    extraCssText:
+      'border-radius: 14px; box-shadow: 0 14px 36px rgba(88, 55, 145, 0.32); backdrop-filter: blur(12px);',
+    formatter: () => {
+      const rows = emotionData
+        .map(
+          (item) => `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:28px;margin-top:9px;">
+              <span style="display:flex;align-items:center;gap:8px;color:#e9e1f8;">
+                <i style="width:7px;height:7px;border-radius:999px;background:${item.color};box-shadow:0 0 10px ${item.color};"></i>
+                ${item.name}
+              </span>
+              <strong style="color:#ffffff;font-size:13px;">${item.value}</strong>
+            </div>
+          `,
+        )
+        .join('')
+
+      return `
+        <div style="min-width:168px;padding:14px 16px 16px;">
+          <div style="font-size:11px;letter-spacing:0.16em;color:#c4b5fd;">EMOTION RADAR</div>
+          <div style="margin-top:4px;font-size:15px;font-weight:700;color:#ffffff;">情绪能量分布</div>
+          ${rows}
+        </div>
+      `
+    },
+  },
+
+  title: {
+    text: `${dominantEmotion.name} ${dominantEmotion.value}`,
+    subtext: '当前主导情绪',
+    left: 'center',
+    top: '45%',
+    textAlign: 'center',
+    textStyle: {
+      color: '#4c3b68',
+      fontSize: 18,
+      fontWeight: 700,
+      textShadowBlur: 12,
+      textShadowColor: 'rgba(192, 132, 252, 0.35)',
+    },
+    subtextStyle: {
+      color: 'rgba(100, 82, 127, 0.72)',
+      fontSize: 10,
+      lineHeight: 22,
+      letterSpacing: 2,
+    },
+  },
+
+  graphic: [
+    {
+      type: 'circle',
+      left: 'center',
+      top: 'center',
+      z: 0,
+      silent: true,
+      shape: {
+        r: 38,
+      },
+      style: {
+        fill: new echarts.graphic.RadialGradient(0.5, 0.5, 0.5, [
+          { offset: 0, color: 'rgba(255, 255, 255, 0.52)' },
+          { offset: 0.65, color: 'rgba(216, 180, 254, 0.16)' },
+          { offset: 1, color: 'rgba(168, 85, 247, 0)' },
+        ]),
+        stroke: 'rgba(192, 132, 252, 0.32)',
+        lineWidth: 1,
+        shadowBlur: 26,
+        shadowColor: 'rgba(168, 85, 247, 0.45)',
+      },
+    },
+  ],
+
+  radar: {
+    center: ['50%', '51%'],
+    radius: '64%',
+    splitNumber: 4,
+    shape: 'polygon',
+    startAngle: 90,
+    indicator: emotionData.map((item) => ({
+      name: item.name,
+      max: 100,
+    })),
+    axisName: {
+      color: '#655181',
+      fontSize: 12,
+      fontWeight: 600,
+      padding: [4, 6],
+    },
+    axisLine: {
+      lineStyle: {
+        color: 'rgba(139, 92, 246, 0.22)',
+        width: 1,
+      },
+    },
+    splitLine: {
+      lineStyle: {
+        color: 'rgba(139, 92, 246, 0.18)',
+        width: 1,
+      },
+    },
+    splitArea: {
+      areaStyle: {
+        color: [
+          'rgba(255, 255, 255, 0.16)',
+          'rgba(196, 181, 253, 0.07)',
+        ],
+      },
+    },
+  },
+
+  series: [
+    {
+      name: '外层光晕',
+      type: 'radar',
+      z: 1,
+      silent: true,
+      symbol: 'none',
+      data: [{ value: emotionData.map((item) => item.value) }],
+      lineStyle: {
+        width: 14,
+        color: 'rgba(192, 132, 252, 0.13)',
+        shadowBlur: 34,
+        shadowColor: 'rgba(168, 85, 247, 0.85)',
+      },
+      areaStyle: {
+        color: 'rgba(168, 85, 247, 0.045)',
+      },
+    },
+    {
+      name: '中层辉光',
+      type: 'radar',
+      z: 2,
+      silent: true,
+      symbol: 'none',
+      data: [{ value: emotionData.map((item) => item.value) }],
+      lineStyle: {
+        width: 6,
+        color: 'rgba(244, 114, 182, 0.2)',
+        shadowBlur: 24,
+        shadowColor: 'rgba(244, 114, 182, 0.8)',
+      },
+    },
+    {
+      name: '当前情绪',
+      type: 'radar',
+      z: 3,
+      symbol: 'circle',
+      symbolSize: 8,
+      data: [{ value: emotionData.map((item) => item.value) }],
+      lineStyle: {
+        width: 2.5,
+        color: new echarts.graphic.LinearGradient(0, 0, 1, 1, [
+          { offset: 0, color: '#38bdf8' },
+          { offset: 0.48, color: '#c084fc' },
+          { offset: 1, color: '#fb7185' },
+        ]),
+        shadowBlur: 18,
+        shadowColor: 'rgba(192, 132, 252, 0.92)',
+      },
+      itemStyle: {
+        color: '#ffffff',
+        borderColor: '#a855f7',
+        borderWidth: 2,
+        shadowBlur: 15,
+        shadowColor: 'rgba(168, 85, 247, 0.95)',
+      },
+      areaStyle: {
+        color: new echarts.graphic.RadialGradient(0.5, 0.5, 0.8, [
+          { offset: 0, color: 'rgba(251, 113, 133, 0.5)' },
+          { offset: 0.5, color: 'rgba(168, 85, 247, 0.36)' },
+          { offset: 1, color: 'rgba(56, 189, 248, 0.1)' },
+        ]),
+      },
+      emphasis: {
+        focus: 'series',
+        lineStyle: {
+          width: 4,
+          shadowBlur: 28,
+          shadowColor: 'rgba(216, 180, 254, 1)',
+        },
+        itemStyle: {
+          borderWidth: 3,
+          shadowBlur: 24,
+        },
+      },
+    },
+  ],
+})
+
+const resizeRadar = () => {
+  cancelAnimationFrame(resizeFrame)
+  resizeFrame = requestAnimationFrame(() => {
+    radarChart?.resize()
+  })
+}
+
+onMounted(async () => {
+  await nextTick()
+
+  if (!radarChartRef.value) return
+
+  radarChart = echarts.init(radarChartRef.value, null, {
+    renderer: 'canvas',
+    devicePixelRatio: window.devicePixelRatio,
+  })
+  radarChart.setOption(createRadarOption())
+
+  resizeObserver = new ResizeObserver(resizeRadar)
+  resizeObserver.observe(radarChartRef.value)
+  window.addEventListener('resize', resizeRadar)
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  window.removeEventListener('resize', resizeRadar)
+  cancelAnimationFrame(resizeFrame)
+  radarChart?.dispose()
+  radarChart = null
+})
 </script>
 
 <template>
@@ -51,33 +313,46 @@
             </div>
           </header>
 
-          <!-- 这里就是之后挂载 ECharts 的区域 -->
+          <!-- ECharts 情绪雷达图 -->
           <div
-            class="relative mt-6 flex min-h-[310px] flex-1 items-center justify-center overflow-hidden rounded-[1.75rem] border border-dashed border-violet-300/80 bg-white/25 sm:mt-8"
+            class="relative mt-6 min-h-[360px] flex-1 overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_18px_60px_rgba(124,58,237,0.12)] sm:mt-8"
           >
             <div
               class="pointer-events-none absolute inset-0 opacity-35 [background-image:radial-gradient(circle,_rgba(124,96,190,0.18)_1px,_transparent_1px)] [background-size:22px_22px]"
             ></div>
 
-            <!-- 第二阶段把 ECharts 实例挂到这个无内容容器中 -->
             <div
-              id="emotion-radar"
-              class="absolute inset-0"
-              aria-label="情绪雷达图区域"
+              class="radar-scan pointer-events-none absolute left-1/2 top-[51%] aspect-square w-[64%] -translate-x-1/2 -translate-y-1/2 rounded-full"
+              aria-hidden="true"
             ></div>
 
             <div
-              class="pointer-events-none relative flex flex-col items-center rounded-2xl border border-white/80 bg-white/35 px-7 py-5 text-center backdrop-blur-sm"
+              class="pointer-events-none absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/75 bg-white/45 px-3 py-1.5 text-[10px] font-semibold tracking-[0.16em] text-violet-600 shadow-sm backdrop-blur-md sm:left-5 sm:top-5"
             >
-              <div
-                class="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100/80 text-xl text-violet-500"
-                aria-hidden="true"
-              >
-                ◌
-              </div>
-              <p class="font-medium text-slate-600">ECharts 情绪雷达图</p>
-              <p class="mt-1 text-xs text-slate-400">图表区域已预留</p>
+              <span class="relative flex h-2 w-2">
+                <span
+                  class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60"
+                ></span>
+                <span
+                  class="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"
+                ></span>
+              </span>
+              LIVE EMOTION
             </div>
+
+            <div
+              class="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/65 bg-white/35 px-3 py-1.5 text-[10px] text-slate-500 backdrop-blur-md"
+            >
+              悬停图形查看五项情绪数值
+            </div>
+
+            <!-- ECharts 实例会渲染到这个容器中 -->
+            <div
+              ref="radarChartRef"
+              id="emotion-radar"
+              class="absolute inset-0 z-10"
+              aria-label="情绪雷达图区域"
+            ></div>
           </div>
         </div>
 
@@ -178,3 +453,49 @@
     </main>
   </div>
 </template>
+
+<style scoped>
+.radar-scan {
+  z-index: 1;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 250deg,
+    rgba(192, 132, 252, 0.04) 300deg,
+    rgba(192, 132, 252, 0.24) 352deg,
+    rgba(251, 113, 133, 0.42) 360deg
+  );
+  -webkit-mask-image: radial-gradient(
+    circle,
+    transparent 0%,
+    transparent 18%,
+    black 25%,
+    black 64%,
+    transparent 70%
+  );
+  mask-image: radial-gradient(
+    circle,
+    transparent 0%,
+    transparent 18%,
+    black 25%,
+    black 64%,
+    transparent 70%
+  );
+  filter: blur(1px);
+  opacity: 0.8;
+  mix-blend-mode: screen;
+  animation: radar-scan 9s linear infinite;
+}
+
+@keyframes radar-scan {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-scan {
+    animation: none;
+  }
+}
+</style>
