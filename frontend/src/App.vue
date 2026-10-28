@@ -9,7 +9,11 @@ import {
 } from 'vue'
 import * as echarts from 'echarts'
 
-const COMPANION_API_URL = '/api/companion'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(
+  /\/$/,
+  '',
+)
+const COMPANION_API_URL = `${API_BASE_URL}/api/companion`
 
 const radarChartRef = ref(null)
 const chatListRef = ref(null)

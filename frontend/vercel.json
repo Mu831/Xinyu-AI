@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://xinyu-ai-backend.vercel.app/api/:path*"
+    }
+  ]
+}
