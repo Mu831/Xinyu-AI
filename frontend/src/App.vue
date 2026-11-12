@@ -1,5 +1,8 @@
 <script setup>
-import { saveHistoryData } from './utils/historyStorage'
+import {
+  getHistoryData,
+  saveHistoryData,
+} from './utils/historyStorage'
 import {
   computed,
   nextTick,
@@ -43,6 +46,49 @@ const createWelcomeDialogue = () => [
 ]
 
 const dialogue = ref(createWelcomeDialogue())
+
+const HISTORY_WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
+const HISTORY_THEMES = {
+  焦虑: {
+    color: '#e11d48',
+    background: 'rgba(244, 63, 94, 0.15)',
+    border: 'rgba(225, 29, 72, 0.2)',
+    chip: 'bg-rose-50 text-rose-600 border-rose-200',
+  },
+  喜悦: {
+    color: '#d99a00',
+    background: 'rgba(250, 204, 21, 0.2)',
+    border: 'rgba(217, 154, 0, 0.2)',
+    chip: 'bg-amber-50 text-amber-600 border-amber-200',
+  },
+  孤独: {
+    color: '#2563eb',
+    background: 'rgba(96, 165, 250, 0.18)',
+    border: 'rgba(37, 99, 235, 0.18)',
+    chip: 'bg-blue-50 text-blue-600 border-blue-200',
+  },
+  期待: {
+    color: '#9333ea',
+    background: 'rgba(192, 132, 252, 0.19)',
+    border: 'rgba(147, 51, 234, 0.18)',
+    chip: 'bg-purple-50 text-purple-600 border-purple-200',
+  },
+  平静: {
+    color: '#0d9488',
+    background: 'rgba(94, 234, 212, 0.2)',
+    border: 'rgba(13, 148, 136, 0.18)',
+    chip: 'bg-teal-50 text-teal-600 border-teal-200',
+  },
+}
+
+const isHistoryOpen = ref(false)
+const historyRecords = ref([])
+const historyError = ref('')
+const historyCursor = ref(
+  new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+)
+const selectedHistoryDate = ref('')
+const selectedHistoryRecordId = ref('')
 
 let radarChart = null
 let resizeObserver = null
@@ -292,6 +338,246 @@ const updateRadarChart = (emotions) => {
   })
 }
 
+const pad2 = (value) => String(value).padStart(2, '0')
+
+const toHistoryDateKey = (date) =>
+  [
+    date.getFullYear(),
+    pad2(date.getMonth() + 1),
+    pad2(date.getDate()),
+  ].join('-')
+
+const todayDateKey = toHistoryDateKey(new Date())
+
+const averageEmotionScores = (records) => {
+  return Object.fromEntries(
+    emotionData.map(({ name }) => {
+      const values = records
+        .map((record) => Number(record?.emotionScores?.[name]))
+        .filter(Number.isFinite)
+      const average = values.length
+        ? Math.round(
+            values.reduce((sum, value) => sum + value, 0) / values.length,
+          )
+        : 0
+
+      return [name, average]
+    }),
+  )
+}
+
+const getDominantEmotion = (scores) =>
+  emotionData.reduce((current, item) => {
+    const score = Number(scores?.[item.name]) || 0
+
+    return score > current.score
+      ? { name: item.name, score }
+      : current
+  }, { name: emotionData[0].name, score: Number(scores?.[emotionData[0].name]) || 0 })
+
+const recordsByDate = computed(() => {
+  const result = new Map()
+
+  for (const record of historyRecords.value) {
+    if (!record?.dateKey) continue
+
+    if (!result.has(record.dateKey)) {
+      result.set(record.dateKey, [])
+    }
+
+    result.get(record.dateKey).push(record)
+  }
+
+  return result
+})
+
+const historyMonthKey = computed(
+  () =>
+    `${historyCursor.value.getFullYear()}-${pad2(
+      historyCursor.value.getMonth() + 1,
+    )}`,
+)
+
+const historyMonthLabel = computed(
+  () =>
+    `${historyCursor.value.getFullYear()} 年 ${
+      historyCursor.value.getMonth() + 1
+    } 月`,
+)
+
+const calendarDays = computed(() => {
+  const year = historyCursor.value.getFullYear()
+  const month = historyCursor.value.getMonth()
+  const leadingBlankCount = (new Date(year, month, 1).getDay() + 6) % 7
+  const dayCount = new Date(year, month + 1, 0).getDate()
+  const days = Array.from({ length: leadingBlankCount }, () => null)
+
+  for (let day = 1; day <= dayCount; day += 1) {
+    const dateKey = `${year}-${pad2(month + 1)}-${pad2(day)}`
+    const records = recordsByDate.value.get(dateKey) ?? []
+    const emotionScores = records.length
+      ? averageEmotionScores(records)
+      : null
+    const dominantEmotion = emotionScores
+      ? getDominantEmotion(emotionScores)
+      : null
+
+    days.push({
+      day,
+      dateKey,
+      records,
+      emotionScores,
+      dominantEmotion,
+      theme: dominantEmotion
+        ? HISTORY_THEMES[dominantEmotion.name]
+        : null,
+    })
+  }
+
+  while (days.length % 7 !== 0) {
+    days.push(null)
+  }
+
+  return days
+})
+
+const monthlySummary = computed(() => {
+  const activeDays = calendarDays.value.filter(
+    (day) => day?.records?.length,
+  )
+
+  if (!activeDays.length) {
+    return {
+      activeDays: 0,
+      recordCount: 0,
+      dominantEmotion: null,
+    }
+  }
+
+  const emotionScores = averageEmotionScores(
+    activeDays.map((day) => ({
+      emotionScores: day.emotionScores,
+    })),
+  )
+
+  return {
+    activeDays: activeDays.length,
+    recordCount: activeDays.reduce(
+      (total, day) => total + day.records.length,
+      0,
+    ),
+    dominantEmotion: getDominantEmotion(emotionScores),
+  }
+})
+
+const monthlySummaryText = computed(() => {
+  if (!monthlySummary.value.activeDays) {
+    return '本月还没有记录，写下今天的心情后会在这里点亮。'
+  }
+
+  return `本月共记录 ${monthlySummary.value.activeDays} 天，主导情绪为 ${monthlySummary.value.dominantEmotion.name}`
+})
+
+const selectedDayRecords = computed(() => {
+  if (!selectedHistoryDate.value) return []
+
+  return recordsByDate.value.get(selectedHistoryDate.value) ?? []
+})
+
+const selectedHistoryRecord = computed(() => {
+  return (
+    selectedDayRecords.value.find(
+      (record) => record.id === selectedHistoryRecordId.value,
+    ) ??
+    selectedDayRecords.value[0] ??
+    null
+  )
+})
+
+const selectedHistoryTheme = computed(() => {
+  const record = selectedHistoryRecord.value
+
+  if (!record) return null
+
+  return HISTORY_THEMES[getDominantEmotion(record.emotionScores).name]
+})
+
+const formatHistoryTime = (createdAt) => {
+  const date = new Date(createdAt)
+
+  if (Number.isNaN(date.getTime())) return ''
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+const formatHistoryDate = (dateKey) => {
+  const [year, month, day] = dateKey.split('-')
+  return `${year} 年 ${Number(month)} 月 ${Number(day)} 日`
+}
+
+const loadHistoryRecords = () => {
+  try {
+    historyRecords.value = getHistoryData()
+    historyError.value = ''
+  } catch (error) {
+    historyRecords.value = []
+    historyError.value =
+      error instanceof Error ? error.message : '往日记录读取失败。'
+  }
+}
+
+const openHistory = () => {
+  loadHistoryRecords()
+  historyCursor.value = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1,
+  )
+  selectedHistoryDate.value = ''
+  selectedHistoryRecordId.value = ''
+  isHistoryOpen.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+const closeHistory = () => {
+  isHistoryOpen.value = false
+  document.body.style.overflow = ''
+}
+
+const shiftHistoryMonth = (offset) => {
+  historyCursor.value = new Date(
+    historyCursor.value.getFullYear(),
+    historyCursor.value.getMonth() + offset,
+    1,
+  )
+  selectedHistoryDate.value = ''
+  selectedHistoryRecordId.value = ''
+}
+
+const selectHistoryRecord = (record) => {
+  if (!record) return
+
+  selectedHistoryDate.value = record.dateKey
+  selectedHistoryRecordId.value = record.id
+  updateRadarChart(record.emotionScores)
+}
+
+const selectHistoryDay = (day) => {
+  if (!day?.records?.length) return
+
+  selectHistoryRecord(day.records[0])
+}
+
+const handleHistoryKeydown = (event) => {
+  if (event.key === 'Escape' && isHistoryOpen.value) {
+    closeHistory()
+  }
+}
+
 const normalizeModelResult = (data) => {
   if (!data?.emotions || typeof data.emotions !== 'object') {
     throw new Error('模型返回的数据缺少 emotions 字段。')
@@ -411,6 +697,10 @@ const startCompanion = async () => {
       })
 
       console.log('历史记录已保存：', saved.record.id)
+
+      if (isHistoryOpen.value) {
+        loadHistoryRecords()
+      }
     } catch (storageError) {
       console.error('历史记录保存失败：', storageError)
     }
@@ -451,12 +741,15 @@ onMounted(async () => {
   resizeObserver = new ResizeObserver(resizeRadar)
   resizeObserver.observe(radarChartRef.value)
   window.addEventListener('resize', resizeRadar)
+  window.addEventListener('keydown', handleHistoryKeydown)
 })
 
 onBeforeUnmount(() => {
   activeController?.abort()
   resizeObserver?.disconnect()
   window.removeEventListener('resize', resizeRadar)
+  window.removeEventListener('keydown', handleHistoryKeydown)
+  document.body.style.overflow = ''
   cancelAnimationFrame(resizeFrame)
   radarChart?.dispose()
   radarChart = null
@@ -501,13 +794,44 @@ onBeforeUnmount(() => {
               </h1>
             </div>
 
-            <div
-              class="mt-1 hidden items-center gap-1.5 rounded-full border border-white/80 bg-white/40 px-3 py-2 backdrop-blur sm:flex"
-              aria-hidden="true"
-            >
-              <span class="h-2 w-2 rounded-full bg-[#f2a9be]"></span>
-              <span class="h-2 w-2 rounded-full bg-[#f4d58a]"></span>
-              <span class="h-2 w-2 rounded-full bg-[#96d5c4]"></span>
+            <div class="mt-1 flex items-center gap-2">
+              <button
+                type="button"
+                class="group flex items-center gap-2 rounded-full border border-white/85 bg-white/45 px-3.5 py-2 text-xs font-semibold text-violet-700 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/70 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-violet-200/60"
+                aria-haspopup="dialog"
+                @click="openHistory"
+              >
+                <svg
+                  class="h-4 w-4 text-violet-500 transition group-hover:scale-110"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M7 3v3m10-3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="m9 15 2 2 4-5"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                往日
+              </button>
+
+              <div
+                class="hidden items-center gap-1.5 rounded-full border border-white/80 bg-white/40 px-3 py-2 backdrop-blur md:flex"
+                aria-hidden="true"
+              >
+                <span class="h-2 w-2 rounded-full bg-[#f2a9be]"></span>
+                <span class="h-2 w-2 rounded-full bg-[#f4d58a]"></span>
+                <span class="h-2 w-2 rounded-full bg-[#96d5c4]"></span>
+              </div>
             </div>
           </header>
 
@@ -718,6 +1042,313 @@ onBeforeUnmount(() => {
           </p>
         </aside>
       </section>
+
+      <Teleport to="body">
+        <div
+          v-if="isHistoryOpen"
+          class="history-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[#302a45]/30 p-3 backdrop-blur-md sm:p-6"
+          @click.self="closeHistory"
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="history-title"
+            class="history-modal-panel relative grid max-h-[92vh] w-full max-w-[1180px] overflow-y-auto overscroll-contain rounded-[2rem] border border-white/80 bg-[#f8f5ff]/80 shadow-[0_30px_100px_rgba(48,37,82,0.35)] backdrop-blur-2xl lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)] lg:overflow-hidden"
+          >
+            <div
+              class="min-h-0 p-4 sm:p-6 lg:overflow-y-auto lg:p-8"
+            >
+              <header class="flex items-start justify-between gap-4">
+                <div>
+                  <p
+                    class="text-[10px] font-semibold uppercase tracking-[0.24em] text-violet-500"
+                  >
+                    MEMORY CALENDAR
+                  </p>
+                  <h2
+                    id="history-title"
+                    class="mt-1 text-2xl font-bold tracking-tight text-slate-700"
+                  >
+                    往日情绪日历
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/85 bg-white/55 text-lg text-slate-500 shadow-sm backdrop-blur transition hover:bg-white/80 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-violet-200/60 lg:hidden"
+                  aria-label="关闭往日日历"
+                  @click="closeHistory"
+                >
+                  ×
+                </button>
+              </header>
+
+              <div
+                class="mt-5 rounded-2xl border border-violet-100/80 bg-white/45 px-4 py-3 text-sm leading-6 text-slate-600 shadow-sm backdrop-blur"
+              >
+                <span class="mr-2 inline-block h-2 w-2 rounded-full bg-violet-400"></span>
+                {{ monthlySummaryText }}
+                <span
+                  v-if="monthlySummary.recordCount"
+                  class="ml-1 text-xs text-slate-400"
+                >
+                  · 共 {{ monthlySummary.recordCount }} 条记录
+                </span>
+              </div>
+
+              <div class="mt-5 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  class="flex h-9 w-9 items-center justify-center rounded-full border border-white/85 bg-white/55 text-slate-500 shadow-sm transition hover:bg-white/85 hover:text-violet-600 focus:outline-none focus:ring-4 focus:ring-violet-200/60"
+                  aria-label="上一个月"
+                  @click="shiftHistoryMonth(-1)"
+                >
+                  ‹
+                </button>
+
+                <div class="text-center">
+                  <p class="text-base font-bold text-slate-700">
+                    {{ historyMonthLabel }}
+                  </p>
+                  <p class="mt-0.5 text-[10px] tracking-[0.15em] text-slate-400">
+                    {{ historyMonthKey }}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  class="flex h-9 w-9 items-center justify-center rounded-full border border-white/85 bg-white/55 text-slate-500 shadow-sm transition hover:bg-white/85 hover:text-violet-600 focus:outline-none focus:ring-4 focus:ring-violet-200/60"
+                  aria-label="下一个月"
+                  @click="shiftHistoryMonth(1)"
+                >
+                  ›
+                </button>
+              </div>
+
+              <div
+                v-if="historyError"
+                class="mt-4 rounded-xl border border-rose-200 bg-rose-50/70 px-3.5 py-2.5 text-xs leading-5 text-rose-600"
+                role="alert"
+              >
+                {{ historyError }}
+              </div>
+
+              <div
+                class="mt-4 grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold tracking-wider text-slate-400"
+              >
+                <span
+                  v-for="weekday in HISTORY_WEEKDAYS"
+                  :key="weekday"
+                  class="py-1"
+                >
+                  {{ weekday }}
+                </span>
+              </div>
+
+              <div class="mt-1 grid grid-cols-7 gap-1.5">
+                <template
+                  v-for="(day, index) in calendarDays"
+                  :key="day?.dateKey ?? `blank-${index}`"
+                >
+                  <div
+                    v-if="!day"
+                    class="min-h-[3.6rem] rounded-xl border border-transparent sm:min-h-[4.5rem]"
+                    aria-hidden="true"
+                  ></div>
+
+                  <button
+                    v-else
+                    type="button"
+                    class="group relative min-h-[3.6rem] rounded-xl border p-1.5 text-left shadow-sm transition sm:min-h-[4.5rem] sm:p-2"
+                    :class="{
+                      'cursor-default border-white/60 bg-white/30 text-slate-300 shadow-none': !day.records.length,
+                      'cursor-pointer text-slate-700 hover:-translate-y-0.5 hover:shadow-md': day.records.length,
+                      'ring-2 ring-violet-400/70 ring-offset-1 ring-offset-[#f8f5ff]': selectedHistoryDate === day.dateKey,
+                      'ring-1 ring-inset ring-violet-300/70': todayDateKey === day.dateKey && selectedHistoryDate !== day.dateKey,
+                    }"
+                    :style="day.theme ? {
+                      backgroundColor: day.theme.background,
+                      borderColor: day.theme.border,
+                    } : undefined"
+                    :disabled="!day.records.length"
+                    :aria-label="day.records.length
+                      ? `${formatHistoryDate(day.dateKey)}，${day.records.length} 条记录，主导情绪${day.dominantEmotion.name}`
+                      : `${formatHistoryDate(day.dateKey)}，没有记录`"
+                    @click="selectHistoryDay(day)"
+                  >
+                    <span class="text-xs font-bold sm:text-sm">{{ day.day }}</span>
+                    <span
+                      v-if="day.records.length"
+                      class="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between gap-1 sm:bottom-2 sm:left-2 sm:right-2"
+                    >
+                      <span
+                        class="h-1.5 w-1.5 rounded-full"
+                        :style="{ backgroundColor: day.theme.color }"
+                      ></span>
+                      <span
+                        v-if="day.records.length > 1"
+                        class="rounded-full bg-white/65 px-1 text-[9px] font-bold text-slate-500"
+                      >
+                        {{ day.records.length }}
+                      </span>
+                    </span>
+                  </button>
+                </template>
+              </div>
+
+              <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span
+                  v-for="(theme, emotionName) in HISTORY_THEMES"
+                  :key="emotionName"
+                  class="inline-flex items-center gap-1.5 text-[10px] text-slate-500"
+                >
+                  <i
+                    class="h-2 w-2 rounded-full"
+                    :style="{ backgroundColor: theme.color }"
+                  ></i>
+                  {{ emotionName }}
+                </span>
+              </div>
+            </div>
+
+            <aside
+              class="min-h-0 border-t border-white/75 bg-white/28 p-4 backdrop-blur-xl sm:p-6 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:p-7"
+            >
+              <header class="flex items-center justify-between gap-3">
+                <div>
+                  <p
+                    class="text-[10px] font-semibold uppercase tracking-[0.22em] text-rose-400"
+                  >
+                    MEMORY REPLAY
+                  </p>
+                  <h3 class="mt-1 text-lg font-bold text-slate-700">
+                    那一天的片段
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  class="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/85 bg-white/55 text-lg text-slate-500 shadow-sm backdrop-blur transition hover:bg-white/80 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-violet-200/60 lg:flex"
+                  aria-label="关闭往日日历"
+                  @click="closeHistory"
+                >
+                  ×
+                </button>
+              </header>
+
+              <div
+                v-if="!selectedHistoryRecord"
+                class="mt-8 flex min-h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-violet-200/80 bg-white/25 px-6 text-center"
+              >
+                <div
+                  class="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-200/80 to-rose-200/70 text-2xl shadow-inner"
+                >
+                  ◌
+                </div>
+                <p class="mt-4 text-sm font-semibold text-slate-600">
+                  选择有颜色的日期
+                </p>
+                <p class="mt-2 max-w-56 text-xs leading-5 text-slate-400">
+                  这里会展开完整日记、双 Agent 对话，并同步切换情绪雷达图。
+                </p>
+              </div>
+
+              <div v-else class="mt-5 space-y-5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span
+                    class="rounded-full border px-3 py-1.5 text-xs font-semibold"
+                    :class="selectedHistoryTheme.chip"
+                  >
+                    {{ formatHistoryDate(selectedHistoryRecord.dateKey) }}
+                  </span>
+                  <span class="text-xs text-slate-400">
+                    {{ formatHistoryTime(selectedHistoryRecord.createdAt) }}
+                  </span>
+                  <span
+                    v-if="selectedHistoryTheme"
+                    class="rounded-full border border-white/80 bg-white/45 px-2.5 py-1 text-[10px] font-semibold text-slate-500"
+                  >
+                    主导 · {{ getDominantEmotion(selectedHistoryRecord.emotionScores).name }}
+                  </span>
+                </div>
+
+                <div
+                  v-if="selectedDayRecords.length > 1"
+                  class="flex flex-wrap gap-2"
+                >
+                  <button
+                    v-for="(record, index) in selectedDayRecords"
+                    :key="record.id"
+                    type="button"
+                    class="rounded-full border px-3 py-1.5 text-[10px] font-semibold transition"
+                    :class="selectedHistoryRecord.id === record.id
+                      ? 'border-violet-300 bg-violet-100/80 text-violet-700'
+                      : 'border-white/80 bg-white/40 text-slate-500 hover:bg-white/70'"
+                    @click="selectHistoryRecord(record)"
+                  >
+                    记录 {{ index + 1 }} · {{ formatHistoryTime(record.createdAt) }}
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-5 gap-1.5">
+                  <div
+                    v-for="emotion in emotionData"
+                    :key="emotion.name"
+                    class="rounded-xl border border-white/80 bg-white/40 px-1 py-2 text-center shadow-sm"
+                  >
+                    <p class="text-[9px] text-slate-400">{{ emotion.name }}</p>
+                    <p class="mt-1 text-sm font-bold text-slate-700">
+                      {{ selectedHistoryRecord.emotionScores[emotion.name] }}
+                    </p>
+                  </div>
+                </div>
+
+                <section>
+                  <h4 class="text-xs font-bold tracking-wider text-slate-500">
+                    完整日记
+                  </h4>
+                  <div
+                    class="mt-2 whitespace-pre-wrap break-words rounded-2xl border border-white/85 bg-white/50 px-4 py-4 text-sm leading-7 text-slate-600 shadow-inner shadow-violet-900/5"
+                  >
+                    {{ selectedHistoryRecord.diary }}
+                  </div>
+                </section>
+
+                <section>
+                  <h4 class="text-xs font-bold tracking-wider text-slate-500">
+                    双 Agent 对话
+                  </h4>
+                  <div class="mt-3 space-y-3">
+                    <article
+                      v-for="(message, index) in selectedHistoryRecord.dialogue"
+                      :key="`${message.role}-${index}-${message.content}`"
+                      class="flex items-start gap-2.5"
+                      :class="message.role === 'logic' ? 'flex-row-reverse' : ''"
+                    >
+                      <div
+                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/90 text-[10px] font-bold shadow-sm"
+                        :class="message.role === 'feel'
+                          ? 'bg-rose-100 text-rose-500'
+                          : 'bg-sky-100 text-sky-600'"
+                      >
+                        {{ message.role === 'feel' ? '感' : '理' }}
+                      </div>
+                      <div
+                        class="max-w-[84%] rounded-2xl border px-3.5 py-2.5 text-xs leading-6 shadow-sm"
+                        :class="message.role === 'feel'
+                          ? 'rounded-tl-sm border-white/85 bg-white/60 text-slate-600'
+                          : 'rounded-tr-sm border-sky-100/90 bg-sky-50/70 text-slate-600'"
+                      >
+                        {{ message.content }}
+                      </div>
+                    </article>
+                  </div>
+                </section>
+              </div>
+            </aside>
+          </section>
+        </div>
+      </Teleport>
     </main>
   </div>
 </template>
@@ -764,9 +1395,37 @@ onBeforeUnmount(() => {
   scrollbar-width: thin;
 }
 
+.history-backdrop {
+  animation: history-backdrop-in 0.2s ease-out both;
+}
+
+.history-modal-panel {
+  animation: history-panel-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 @keyframes radar-scan {
   to {
     transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+@keyframes history-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes history-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -783,7 +1442,9 @@ onBeforeUnmount(() => {
 
 @media (prefers-reduced-motion: reduce) {
   .radar-scan,
-  .chat-message {
+  .chat-message,
+  .history-backdrop,
+  .history-modal-panel {
     animation: none;
   }
 }
