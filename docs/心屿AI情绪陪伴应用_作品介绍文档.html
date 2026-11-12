@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>心屿 AI 情绪陪伴应用 · 作品介绍文档</title>
+    <style>
+      :root {
+        --ink: #293146;
+        --muted: #6d7486;
+        --violet: #7958dc;
+        --violet-dark: #4d397f;
+        --rose: #ed7899;
+        --sky: #3e9fc2;
+        --mint: #39a98e;
+        --line: rgba(100, 77, 148, 0.13);
+        --paper: #fcfbff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        color: var(--ink);
+        background: #e9e7ee;
+        font-family:
+          "Microsoft YaHei",
+          "PingFang SC",
+          "Noto Sans CJK SC",
+          sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      @page {
+        size: A4;
+        margin: 0;
+      }
+
+      .page {
+        position: relative;
+        width: 210mm;
+        height: 297mm;
+        overflow: hidden;
+        padding: 15mm 17mm 13mm;
+        margin: 0 auto 8mm;
+        background:
+          radial-gradient(
+            circle at 93% 6%,
+            rgba(237, 120, 153, 0.1),
+            transparent 23%
+          ),
+          radial-gradient(
+            circle at 2% 94%,
+            rgba(121, 88, 220, 0.1),
+            transparent 27%
+          ),
+          var(--paper);
+        break-after: page;
+      }
+
+      .page:last-child {
+        break-after: auto;
+      }
+
+      .page::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border-top: 3px solid rgba(121, 88, 220, 0.35);
+      }
+
+      .page::after {
+        content: "";
+        position: absolute;
+        right: -42mm;
+        bottom: -55mm;
+        width: 110mm;
+        height: 110mm;
+        border: 1px solid rgba(121, 88, 220, 0.08);
+        border-radius: 50%;
+        box-shadow:
+          0 0 0 13mm rgba(121, 88, 220, 0.025),
+          0 0 0 27mm rgba(121, 88, 220, 0.016);
+        pointer-events: none;
+      }
+
+      .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 7mm;
+        color: var(--muted);
+        font-size: 8pt;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 2.2mm;
+        color: var(--violet-dark);
+        font-weight: 700;
+        letter-spacing: 0.07em;
+      }
+
+      .brand-mark {
+        width: 3.1mm;
+        height: 3.1mm;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--violet), var(--rose));
+        box-shadow: 0 0 4mm rgba(121, 88, 220, 0.35);
+      }
+
+      .chapter-tag {
+        padding: 1.4mm 3mm;
+        border: 1px solid rgba(121, 88, 220, 0.16);
+        border-radius: 99px;
+        background: rgba(121, 88, 220, 0.055);
+        color: var(--violet-dark);
+        font-weight: 700;
+        letter-spacing: 0.07em;
+      }
+
+      .page-footer {
+        position: absolute;
+        left: 17mm;
+        right: 17mm;
+        bottom: 7mm;
+        display: flex;
+        justify-content: space-between;
+        padding-top: 2.3mm;
+        border-top: 1px solid var(--line);
+        color: #8a8f9d;
+        font-size: 7.2pt;
+      }
+
+      .page-number {
+        color: var(--violet-dark);
+        font-weight: 700;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 4mm;
+        color: #2d2547;
+        font-size: 30pt;
+        line-height: 1.15;
+        letter-spacing: -0.04em;
+      }
+
+      h1 em {
+        color: var(--violet);
+        font-style: normal;
+      }
+
+      h2 {
+        margin-bottom: 2mm;
+        color: var(--violet-dark);
+        font-size: 20pt;
+        line-height: 1.22;
+        letter-spacing: -0.025em;
+      }
+
+      h3 {
+        margin-bottom: 1.4mm;
+        color: var(--ink);
+        font-size: 10pt;
+        line-height: 1.42;
+      }
+
+      p,
+      li,
+      td,
+      th {
+        font-size: 8.9pt;
+        line-height: 1.68;
+      }
+
+      p {
+        margin-bottom: 2.2mm;
+        color: #4b556a;
+      }
+
+      ul,
+      ol {
+        margin: 1.5mm 0 0;
+        padding-left: 4.3mm;
+      }
+
+      li {
+        margin-bottom: 1.1mm;
+        color: #4b556a;
+      }
+
+      strong {
+        color: var(--violet-dark);
+      }
+
+      .section-title {
+        margin-bottom: 4.5mm;
+      }
+
+      .section-kicker {
+        margin-bottom: 1.1mm;
+        color: var(--rose);
+        font-size: 7.5pt;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      .lead {
+        max-width: 154mm;
+        margin-bottom: 0;
+        font-size: 10pt;
+        line-height: 1.72;
+      }
+
+      .card {
+        border: 1px solid rgba(100, 77, 148, 0.12);
+        border-radius: 4.5mm;
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 3mm 9mm rgba(65, 54, 99, 0.052);
+      }
+
+      .card-pad {
+        padding: 4.3mm;
+      }
+
+      .soft-violet {
+        background: linear-gradient(
+          145deg,
+          rgba(121, 88, 220, 0.1),
+          rgba(255, 255, 255, 0.73)
+        );
+      }
+
+      .soft-rose {
+        background: linear-gradient(
+          145deg,
+          rgba(237, 120, 153, 0.11),
+          rgba(255, 255, 255, 0.73)
+        );
+      }
+
+      .soft-sky {
+        background: linear-gradient(
+          145deg,
+          rgba(62, 159, 194, 0.1),
+          rgba(255, 255, 255, 0.73)
+        );
+      }
+
+      .soft-mint {
+        background: linear-gradient(
+          145deg,
+          rgba(57, 169, 142, 0.1),
+          rgba(255, 255, 255, 0.73)
+        );
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4mm;
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 3.5mm;
+      }
+
+      .mini-label {
+        display: flex;
+        align-items: center;
+        gap: 1.5mm;
+        margin-bottom: 2mm;
+        color: var(--violet-dark);
+        font-size: 7.8pt;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .mini-label::before {
+        content: "";
+        width: 4.5mm;
+        height: 1.2mm;
+        border-radius: 99px;
+        background: linear-gradient(90deg, var(--violet), var(--rose));
+      }
+
+      .pill {
+        display: inline-block;
+        margin: 0 1.4mm 1.4mm 0;
+        padding: 1.2mm 2.7mm;
+        border: 1px solid rgba(121, 88, 220, 0.14);
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--violet-dark);
+        font-size: 7.7pt;
+        font-weight: 700;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 3.5mm;
+        background: rgba(255, 255, 255, 0.68);
+      }
+
+      th {
+        padding: 2.4mm 2.8mm;
+        background: rgba(121, 88, 220, 0.075);
+        color: var(--violet-dark);
+        text-align: left;
+        font-size: 7.9pt;
+      }
+
+      td {
+        padding: 2.25mm 2.8mm;
+        border-top: 1px solid rgba(100, 77, 148, 0.08);
+        vertical-align: top;
+      }
+
+      .callout {
+        margin-top: 3.7mm;
+        padding: 3.3mm 4mm;
+        border-left: 3px solid var(--violet);
+        border-radius: 1mm 3.5mm 3.5mm 1mm;
+        background: rgba(121, 88, 220, 0.06);
+        color: #4c4563;
+        font-size: 8.4pt;
+        line-height: 1.68;
+      }
+
+      .num-card {
+        padding: 4mm;
+      }
+
+      .num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 7.5mm;
+        height: 7.5mm;
+        margin-bottom: 2.2mm;
+        border-radius: 2.3mm;
+        background: rgba(121, 88, 220, 0.1);
+        color: var(--violet-dark);
+        font-size: 8pt;
+        font-weight: 700;
+      }
+
+      .usage-row {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 2.2mm;
+        margin-top: 4mm;
+      }
+
+      .usage-step {
+        padding: 3mm;
+        border: 1px solid rgba(121, 88, 220, 0.12);
+        border-radius: 3.5mm;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .usage-step b {
+        display: block;
+        margin-bottom: 1.2mm;
+        color: var(--violet-dark);
+        font-size: 8pt;
+      }
+
+      .usage-step p {
+        margin: 0;
+        font-size: 7.5pt;
+        line-height: 1.5;
+      }
+
+      .step-index {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 5.5mm;
+        height: 5.5mm;
+        margin-bottom: 1.5mm;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--violet), var(--rose));
+        color: white;
+        font-size: 6.8pt;
+        font-weight: 700;
+      }
+
+      .highlight {
+        position: relative;
+        padding: 4mm;
+        border-radius: 4.5mm;
+        border: 1px solid rgba(121, 88, 220, 0.11);
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .highlight .icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 9mm;
+        height: 9mm;
+        margin-bottom: 2.2mm;
+        border-radius: 2.8mm;
+        background: rgba(121, 88, 220, 0.1);
+        color: var(--violet);
+        font-size: 9pt;
+        font-weight: 700;
+      }
+
+      .highlight h3 {
+        color: var(--violet-dark);
+        font-size: 10.5pt;
+      }
+
+      .highlight p {
+        margin-bottom: 0;
+        font-size: 8.3pt;
+      }
+
+      .arch-row {
+        display: grid;
+        grid-template-columns: 1fr 7mm 1fr 7mm 1fr;
+        align-items: center;
+        margin: 4mm 0;
+      }
+
+      .arch-node {
+        min-height: 33mm;
+        padding: 3.8mm;
+        border: 1px solid rgba(121, 88, 220, 0.16);
+        border-radius: 4mm;
+        background: rgba(255, 255, 255, 0.74);
+        text-align: center;
+        box-shadow: 0 2.5mm 8mm rgba(65, 54, 99, 0.05);
+      }
+
+      .arch-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 9mm;
+        height: 9mm;
+        margin: 0 auto 1.8mm;
+        border-radius: 2.6mm;
+        background: rgba(121, 88, 220, 0.1);
+        color: var(--violet);
+        font-size: 13pt;
+        font-weight: 700;
+      }
+
+      .arch-node strong {
+        display: block;
+        margin-bottom: 1.1mm;
+        font-size: 9pt;
+      }
+
+      .arch-node span {
+        color: var(--muted);
+        font-size: 7.4pt;
+        line-height: 1.5;
+      }
+
+      .arrow {
+        color: var(--violet);
+        font-size: 17pt;
+        text-align: center;
+      }
+
+      .project-shot {
+        width: 100%;
+        display: block;
+        border-radius: 4mm;
+        border: 1px solid rgba(121, 88, 220, 0.13);
+        box-shadow: 0 5mm 13mm rgba(65, 54, 99, 0.12);
+      }
+
+      .image-caption {
+        margin-top: 2mm;
+        color: var(--muted);
+        font-size: 7.7pt;
+        line-height: 1.55;
+        text-align: center;
+      }
+
+      .annotation-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 3mm;
+        margin-top: 4mm;
+      }
+
+      .annotation {
+        padding: 3.2mm;
+        border-radius: 3.5mm;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(121, 88, 220, 0.1);
+      }
+
+      .annotation b {
+        display: block;
+        margin-bottom: 1mm;
+        color: var(--violet-dark);
+        font-size: 8.3pt;
+      }
+
+      .annotation p {
+        margin: 0;
+        font-size: 7.7pt;
+      }
+
+      .status-ok {
+        display: inline-block;
+        padding: 0.7mm 2mm;
+        border-radius: 99px;
+        background: rgba(57, 169, 142, 0.12);
+        color: #14745f;
+        font-size: 7.3pt;
+        font-weight: 700;
+      }
+
+      .timeline {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 3mm;
+        margin-top: 4mm;
+      }
+
+      .timeline-item {
+        padding: 3.5mm;
+        border: 1px solid rgba(121, 88, 220, 0.11);
+        border-radius: 3.5mm;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .timeline-item b {
+        display: block;
+        margin-bottom: 1.2mm;
+        color: var(--violet-dark);
+        font-size: 8.4pt;
+      }
+
+      .timeline-item p {
+        margin: 0;
+        font-size: 7.7pt;
+        line-height: 1.55;
+      }
+
+      .final-quote {
+        padding: 5mm;
+        border-radius: 4.5mm;
+        background: linear-gradient(
+          135deg,
+          rgba(121, 88, 220, 0.11),
+          rgba(237, 120, 153, 0.1)
+        );
+        text-align: center;
+      }
+
+      .final-quote strong {
+        display: block;
+        margin-bottom: 1.5mm;
+        font-size: 12pt;
+      }
+
+      .final-quote p {
+        margin: 0 auto;
+        max-width: 146mm;
+        font-size: 8.7pt;
+        line-height: 1.75;
+      }
+
+      /* Cover */
+      .cover {
+        padding: 17mm 19mm 13mm;
+        background:
+          radial-gradient(
+            circle at 82% 4%,
+            rgba(237, 120, 153, 0.2),
+            transparent 22%
+          ),
+          radial-gradient(
+            circle at 8% 78%,
+            rgba(62, 159, 194, 0.14),
+            transparent 25%
+          ),
+          linear-gradient(145deg, #fcfbff, #f3efff 58%, #fff8fa);
+      }
+
+      .cover-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .cover-badge {
+        padding: 1.7mm 3.4mm;
+        border: 1px solid rgba(121, 88, 220, 0.2);
+        border-radius: 99px;
+        color: var(--violet-dark);
+        font-size: 7pt;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .cover-heading {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 10mm;
+        margin-top: 18mm;
+        margin-bottom: 8mm;
+      }
+
+      .cover-copy {
+        max-width: 116mm;
+      }
+
+      .cover-copy h1 {
+        font-size: 29pt;
+      }
+
+      .cover-sub {
+        margin-bottom: 4mm;
+        color: #5e576c;
+        font-size: 11.5pt;
+        line-height: 1.72;
+      }
+
+      .cover-desc {
+        color: #777181;
+        font-size: 8.8pt;
+        line-height: 1.7;
+      }
+
+      .cover-meta {
+        display: flex;
+        gap: 5mm;
+        margin-top: 5mm;
+        color: #716a7d;
+        font-size: 7.8pt;
+      }
+
+      .cover-meta div {
+        padding-right: 4.5mm;
+        border-right: 1px solid rgba(121, 88, 220, 0.14);
+      }
+
+      .cover-meta div:last-child {
+        border: 0;
+      }
+
+      .cover-score {
+        flex: 0 0 36mm;
+        padding: 4mm;
+        border-radius: 5mm;
+        background: rgba(255, 255, 255, 0.7);
+        text-align: center;
+        box-shadow: 0 4mm 12mm rgba(65, 54, 99, 0.09);
+      }
+
+      .cover-score b {
+        display: block;
+        color: var(--violet);
+        font-size: 19pt;
+      }
+
+      .cover-score span {
+        color: var(--muted);
+        font-size: 7.3pt;
+      }
+
+      .cover-image-wrap {
+        padding: 3mm;
+        border: 1px solid rgba(255, 255, 255, 0.95);
+        border-radius: 5.5mm;
+        background: rgba(255, 255, 255, 0.45);
+        box-shadow: 0 7mm 18mm rgba(65, 54, 99, 0.14);
+      }
+
+      .cover-image-wrap img {
+        width: 100%;
+        display: block;
+        border-radius: 4.5mm;
+      }
+
+      .cover-bottom {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 5mm;
+        padding-top: 4mm;
+        border-top: 1px solid rgba(121, 88, 220, 0.15);
+        color: #756e82;
+        font-size: 8pt;
+      }
+
+      .cover-bottom strong {
+        color: var(--violet-dark);
+      }
+
+      @media print {
+        body {
+          background: #fff;
+        }
+
+        .page {
+          margin: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 01 -->
+    <section class="page cover">
+      <div class="cover-top">
+        <div class="brand"><span class="brand-mark"></span>心屿 · XINYU</div>
+        <span class="cover-badge">传智杯-AI创新应用挑战赛</span>
+      </div>
+
+      <div class="cover-heading">
+        <div class="cover-copy">
+          <div class="section-kicker">PROJECT INTRODUCTION · 2026</div>
+          <h1>AI 桌面<br /><em>情绪陪伴应用</em></h1>
+          <p class="cover-sub">
+            既能听懂情绪，也能陪你找到下一步的桌面伙伴。
+          </p>
+          <p class="cover-desc">
+            用户写下日记后，感性宠物先接住感受，理性宠物再给出现实建议；
+            五维情绪分数同步变成发光雷达图，让用户“看见情绪”并开始行动。
+          </p>
+          <div>
+            <span class="pill">Vue 3</span>
+            <span class="pill">ECharts</span>
+            <span class="pill">DeepSeek</span>
+            <span class="pill">双 Agent</span>
+            <span class="pill">Netlify</span>
+          </div>
+          <div class="cover-meta">
+            <div><strong>开发者</strong><br />郑梓昕</div>
+            <div><strong>作品类型</strong><br />Web AI 应用</div>
+            <div><strong>年份</strong><br />2026</div>
+          </div>
+        </div>
+
+        <div class="cover-score">
+          <b>焦虑 80</b>
+          <span>五维情绪 · 实时可视化</span>
+        </div>
+      </div>
+
+      <div class="cover-image-wrap">
+        <img
+          src="./project-app-screenshot.png"
+          alt="心屿 AI 桌面情绪陪伴应用真实界面"
+        />
+      </div>
+
+      <div class="cover-bottom">
+        <span><strong>在线演示：</strong>xinyu-ai-demo-mu831.netlify.app</span>
+        <span>郑梓昕 · 2026</span>
+      </div>
+    </section>
+
+    <!-- 02 -->
+    <section class="page">
+      <div class="page-header">
+        <div class="brand"><span class="brand-mark"></span>心屿 · 作品介绍</div>
+        <span class="chapter-tag">01 / 项目与使用方式</span>
+      </div>
+
+      <div class="section-title">
+        <div class="section-kicker">PROJECT DETAILS & USAGE</div>
+        <h2>从一句日记开始的情绪陪伴</h2>
+        <p class="lead">
+          心屿面向学习、比赛和工作中容易焦虑的年轻人。
+          它不要求用户填写复杂问卷，只需要写下此刻发生的事，就能获得情绪画像和两个角色的回应。
+        </p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card num-card soft-rose">
+          <div class="num">01</div>
+          <h3>情绪分析</h3>
+          <p>分析焦虑、喜悦、孤独、期待、平静五个维度，每项 0–100 分。</p>
+        </div>
+        <div class="card num-card soft-violet">
+          <div class="num">02</div>
+          <h3>双 Agent 对话</h3>
+          <p>感性伙伴共情，理性伙伴提出具体建议，两人交替互动而不是各说各话。</p>
+        </div>
+        <div class="card num-card soft-sky">
+          <div class="num">03</div>
+          <h3>可视化反馈</h3>
+          <p>ECharts 发光雷达图实时更新，让抽象情绪变化变成一眼能看懂的图形。</p>
+        </div>
+      </div>
+
+      <div class="card card-pad" style="margin-top: 4.5mm">
+        <div class="mini-label">使用方式</div>
+        <div class="usage-row">
+          <div class="usage-step">
+            <div class="step-index">1</div>
+            <b>打开网址</b>
+            <p>在电脑或手机浏览器进入公网演示地址。</p>
+          </div>
+          <div class="usage-step">
+            <div class="step-index">2</div>
+            <b>写日记</b>
+            <p>在右侧输入框写下真实感受或发生的事。</p>
+          </div>
+          <div class="usage-step">
+            <div class="step-index">3</div>
+            <b>点击陪伴</b>
+            <p>点击“开始陪伴”，按钮进入加载状态。</p>
+          </div>
+          <div class="usage-step">
+            <div class="step-index">4</div>
+            <b>查看反馈</b>
+            <p>左侧雷达更新，右侧宠物消息逐条出现。</p>
+          </div>
+          <div class="usage-step">
+            <div class="step-index">5</div>
+            <b>调整表达</b>
+            <p>修改日记再次体验，比较不同情绪结构。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 4.5mm">
+        <div class="card card-pad soft-mint">
+          <div class="mini-label">适合的场景</div>
+          <ul>
+            <li>比赛前紧张、期待等复杂情绪并存</li>
+            <li>学习压力大，不知道先处理什么</li>
+            <li>完成任务后想复盘自己的状态</li>
+          </ul>
+        </div>
+        <div class="card card-pad">
+          <div class="mini-label">产品边界</div>
+          <p style="margin-bottom: 0">
+            心屿用于情绪自我觉察和行动梳理，不进行心理疾病诊断。
+            遇到自伤、伤人或紧急危险时，系统会优先提醒用户联系现实中的紧急支持。
+          </p>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        <span>心屿 · AI 桌面情绪陪伴应用</span>
+        <span class="page-number">02</span>
+      </div>
+    </section>
+
+    <!-- 03 -->
+    <section class="page">
+      <div class="page-header">
+        <div class="brand"><span class="brand-mark"></span>心屿 · 作品介绍</div>
+        <span class="chapter-tag">02 / 项目亮点</span>
+      </div>
+
+      <div class="section-title">
+        <div class="section-kicker">PROJECT HIGHLIGHTS</div>
+        <h2>亮点不是“用了 AI”，而是 AI 被怎么使用</h2>
+        <p class="lead">
+          心屿把一次日记输入拆成“感受被理解”和“问题有方法”两种互补体验，
+          同时把可视化与对话绑定在同一次反馈中。
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="highlight soft-rose">
+          <div class="icon">01</div>
+          <h3>双 Agent 角色分工</h3>
+          <p>感性伙伴先接住情绪，理性伙伴不否定感受，进一步给出低负担行动建议。两种声音在同一次对话中产生互动。</p>
+        </div>
+        <div class="highlight soft-violet">
+          <div class="icon">02</div>
+          <h3>一次请求完成两种输出</h3>
+          <p>同一个模型同时生成五个情绪分数和 4–6 条角色对话，减少等待、调用费用和数据不一致。</p>
+        </div>
+        <div class="highlight soft-sky">
+          <div class="icon">03</div>
+          <h3>情绪不是一串数字</h3>
+          <p>发光雷达图、中心主导情绪和聊天内容互相解释，用户能看见情绪结构，而不是只得到一个分数。</p>
+        </div>
+        <div class="highlight soft-mint">
+          <div class="icon">04</div>
+          <h3>轻量、有温度的界面</h3>
+          <p>毛玻璃桌面小组件、柔和渐变和逐条气泡动画，降低情绪记录的心理门槛，适合比赛现场快速展示。</p>
+        </div>
+        <div class="highlight">
+          <div class="icon">05</div>
+          <h3>关键数据不暴露</h3>
+          <p>API Key 只保存在 Netlify 服务端 Secret 环境变量中；前端通过同域 /api 调用，不接触密钥。</p>
+        </div>
+        <div class="highlight">
+          <div class="icon">06</div>
+          <h3>单链接完整演示</h3>
+          <p>页面和 Serverless API 部署在同一域名，评委打开一个公开网址即可完成输入、分析和对话体验。</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>核心价值：</strong>让 AI 不只回答“你是什么情绪”，而是进一步回答
+        “这种情绪由什么组成”和“现在可以先做什么”。
+      </div>
+
+      <div class="page-footer">
+        <span>心屿 · AI 桌面情绪陪伴应用</span>
+        <span class="page-number">03</span>
+      </div>
+    </section>
+
+    <!-- 04 -->
+    <section class="page">
+      <div class="page-header">
+        <div class="brand"><span class="brand-mark"></span>心屿 · 作品介绍</div>
+        <span class="chapter-tag">03 / AI 测试落地</span>
+      </div>
+
+      <div class="section-title">
+        <div class="section-kicker">AI TESTING IMPLEMENTATION</div>
+        <h2>AI 参与开发，也要通过可验证的关卡</h2>
+        <p class="lead">
+          项目采用 AI 辅助生成与调试代码，但没有把“AI 说完成了”当作验收结果。
+          每一层都通过构建、接口、数据结构和真实调用进行测试。
+        </p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card num-card soft-violet">
+          <div class="num">A</div>
+          <h3>AI 辅助开发</h3>
+          <p>用 AI 辅助生成 UI、ECharts 配置、Node API 和 Prompt，再由开发者逐阶段检查与调试。</p>
+        </div>
+        <div class="card num-card soft-rose">
+          <div class="num">B</div>
+          <h3>模型输出测试</h3>
+          <p>验证五维字段是否齐全、分数是否在 0–100、对话是否 4 或 6 条、角色是否严格交替。</p>
+        </div>
+        <div class="card num-card soft-mint">
+          <div class="num">C</div>
+          <h3>真实链路测试</h3>
+          <p>从公网页面请求 Serverless API，再真实调用 DeepSeek，检查返回结果能否驱动图表和气泡。</p>
+        </div>
+      </div>
+
+      <div class="card card-pad" style="margin-top: 4.5mm">
+        <div class="mini-label">测试项目与结果</div>
+        <table>
+          <tr><th style="width: 36%">测试项</th><th>验收内容</th><th style="width: 22%">结果</th></tr>
+          <tr><td>前端生产构建</td><td>Vite 成功生成静态页面和 CSS/JS 资源</td><td><span class="status-ok">通过</span></td></tr>
+          <tr><td>公网页面访问</td><td>Netlify 站点无需登录，HTTP 返回 200</td><td><span class="status-ok">HTTP 200</span></td></tr>
+          <tr><td>服务端 Key 读取</td><td>/api/health 返回 hasApiKey = true</td><td><span class="status-ok">通过</span></td></tr>
+          <tr><td>五维情绪结构</td><td>焦虑、喜悦、孤独、期待、平静全部存在</td><td><span class="status-ok">通过</span></td></tr>
+          <tr><td>双 Agent 结构</td><td>真实返回 4 条消息，角色为 feel/logic 交替</td><td><span class="status-ok">通过</span></td></tr>
+          <tr><td>异常输入</td><td>空日记返回 400，无 Key 返回 503</td><td><span class="status-ok">通过</span></td></tr>
+          <tr><td>真实模型调用</td><td>使用短日记请求 DeepSeek 并成功返回结果</td><td><span class="status-ok">通过</span></td></tr>
+        </table>
+      </div>
+
+      <div class="grid-2" style="margin-top: 4.5mm">
+        <div class="card card-pad">
+          <div class="mini-label">测试数据示例</div>
+          <p><strong>输入：</strong>“今天有点累，但完成了任务，对明天有些期待。”</p>
+          <p style="margin-bottom: 0">
+            <strong>验证重点：</strong>五个分数是否完整、对话数量是否正确、
+            感性与理性是否交替、前端是否自动更新。
+          </p>
+        </div>
+        <div class="card card-pad soft-rose">
+          <div class="mini-label">AI 测试的优势与边界</div>
+          <p style="margin-bottom: 0">
+            AI 能快速帮助写测试用例、定位构建错误和模拟异常场景；
+            但真实用户可读性、API 费用、部署域名可达性和安全边界仍由人工验收。
+          </p>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        <span>心屿 · AI 桌面情绪陪伴应用</span>
+        <span class="page-number">04</span>
+      </div>
+    </section>
+
+    <!-- 05 -->
+    <section class="page">
+      <div class="page-header">
+        <div class="brand"><span class="brand-mark"></span>心屿 · 作品介绍</div>
+        <span class="chapter-tag">04 / 关键技术</span>
+      </div>
+
+      <div class="section-title">
+        <div class="section-kicker">KEY TECHNOLOGIES</div>
+        <h2>自然语言结果如何变成可用界面</h2>
+        <p class="lead">
+          浏览器负责体验，Serverless API 负责安全调用，DeepSeek 负责理解与生成，
+          ECharts 负责把结构化情绪变成可视化画面。
+        </p>
+      </div>
+
+      <div class="arch-row">
+        <div class="arch-node">
+          <div class="arch-icon">01</div>
+          <strong>Vue 前端</strong>
+          <span>日记输入<br />状态与消息展示</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="arch-node">
+          <div class="arch-icon">02</div>
+          <strong>同域 API</strong>
+          <span>/api/companion<br />输入校验与限流</span>
+        </div>
+        <div class="arrow">→</div>
+        <div class="arch-node">
+          <div class="arch-icon">03</div>
+          <strong>DeepSeek</strong>
+          <span>情绪分析<br />双 Agent 对话</span>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="mini-label">关键技术与作用</div>
+        <table>
+          <tr><th style="width: 22%">技术</th><th>作用</th></tr>
+          <tr><td><strong>Vue 3 + Vite</strong></td><td>构建单页应用，管理文本、对话、Loading 和错误状态；Vite 负责本地代理和生产构建。</td></tr>
+          <tr><td><strong>Tailwind CSS</strong></td><td>实现桌面毛玻璃小组件、左右双栏和响应式布局，保证演示视觉统一。</td></tr>
+          <tr><td><strong>ECharts 6</strong></td><td>渲染五维情绪雷达图；通过渐变、阴影和动态更新形成发光效果。</td></tr>
+          <tr><td><strong>Node.js / Express</strong></td><td>本地调试 API；保管 Key、拼接 Prompt、请求 DeepSeek 并校验返回 JSON。</td></tr>
+          <tr><td><strong>Netlify Functions</strong></td><td>线上运行同域 Serverless API，与静态页面一起部署，避免暴露 Key 和跨域问题。</td></tr>
+          <tr><td><strong>DeepSeek Chat</strong></td><td>使用 System Prompt 与 JSON Object 模式，一次生成情绪分数和双角色对话。</td></tr>
+        </table>
+      </div>
+
+      <div class="grid-2" style="margin-top: 4.5mm">
+        <div class="card card-pad soft-violet">
+          <div class="mini-label">意图与数据控制</div>
+          <ul>
+            <li>System Prompt 固定角色、安全边界和 JSON 结构。</li>
+            <li>后端校验字段名称、数值范围、消息数量和角色顺序。</li>
+            <li>用户日记只作为数据传入，模型需忽略其中可能的指令。</li>
+          </ul>
+        </div>
+        <div class="card card-pad soft-mint">
+          <div class="mini-label">工程与安全</div>
+          <ul>
+            <li>Key 仅存在于本地 .env 或云端 Secret 环境变量。</li>
+            <li>前端只请求同域 /api/companion，不直接访问 DeepSeek。</li>
+            <li>生产构建通过，页面、API、模型调用分别完成烟测。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        <span>心屿 · AI 桌面情绪陪伴应用</span>
+        <span class="page-number">05</span>
+      </div>
+    </section>
+
+    <!-- 06 -->
+    <section class="page">
+      <div class="page-header">
+        <div class="brand"><span class="brand-mark"></span>心屿 · 作品介绍</div>
+        <span class="chapter-tag">05 / 项目图片</span>
+      </div>
+
+      <div class="section-title">
+        <div class="section-kicker">PROJECT SCREENSHOT</div>
+        <h2>真实线上界面截图</h2>
+        <p class="lead">
+          以下图片来自 2026 年 10 月线上演示版本，包含情绪雷达、日记输入和双 Agent 初始对话。
+        </p>
+      </div>
+
+      <img
+        class="project-shot"
+        src="./project-app-screenshot.png"
+        alt="心屿 AI 情绪陪伴应用线上界面"
+      />
+      <div class="image-caption">
+        图 1：心屿线上演示界面。左侧为 ECharts 五维情绪雷达，右侧为日记输入、
+        感性伙伴与理性伙伴对话区域。
+      </div>
+
+      <div class="annotation-grid">
+        <div class="annotation">
+          <b>情绪雷达区域</b>
+          <p>展示焦虑、喜悦、孤独、期待、平静五个维度；中心显示当前主导情绪。</p>
+        </div>
+        <div class="annotation">
+          <b>情绪日记输入</b>
+          <p>用户自由描述事件和感受，不需要套用固定句式，最多输入 2000 字。</p>
+        </div>
+        <div class="annotation">
+          <b>双 Agent 对话</b>
+          <p>感性与理性角色使用不同头像、颜色与气泡位置，形成明显角色分工。</p>
+        </div>
+      </div>
+
+      <div class="card card-pad soft-sky" style="margin-top: 4.5mm">
+        <div class="mini-label">在线体验</div>
+        <p style="margin-bottom: 0; font-size: 10pt">
+          <strong>https://xinyu-ai-demo-mu831.netlify.app</strong><br />
+          打开后输入一段日记，点击“开始陪伴”，即可体验真实 AI 返回结果。
+        </p>
+      </div>
+
+      <div class="page-footer">
+        <span>心屿 · AI 桌面情绪陪伴应用</span>
+        <span class="page-number">06</span>
+      </div>
+    </section>
+
+    <!-- 07 -->
+    <section class="page">
+      <div class="page-header">
+        <div class="brand"><span class="brand-mark"></span>心屿 · 作品介绍</div>
+        <span class="chapter-tag">06 / 发表获奖与优化</span>
+      </div>
+
+      <div class="section-title">
+        <div class="section-kicker">PUBLICATION · AWARDS · OPTIMIZATION</div>
+        <h2>原创比赛原型，尚未公开发表或获奖</h2>
+        <p class="lead">
+          本作品为参加传智杯-AI创新应用挑战赛独立制作的原创 Web 原型，
+          此前没有公开发表，也没有获得过奖项。
+        </p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card card-pad soft-mint">
+          <div class="mini-label">发表情况</div>
+          <h3>未公开发表</h3>
+          <p style="margin-bottom: 0">
+            项目当前仅用于本次比赛的作品展示与公网演示，没有论文、专利或其他公开发表记录。
+          </p>
+        </div>
+        <div class="card card-pad soft-rose">
+          <div class="mini-label">获奖情况</div>
+          <h3>暂无获奖记录</h3>
+          <p style="margin-bottom: 0">
+            截至本作品介绍文档生成时，项目未参加或获得其他赛事奖项。
+          </p>
+        </div>
+      </div>
+
+      <div class="card card-pad" style="margin-top: 4.5mm">
+        <div class="mini-label">项目来源</div>
+        <p style="margin-bottom: 0">
+          项目不是基于其他已有项目直接改造，而是围绕“双 Agent 情绪陪伴”这一想法，
+          从界面骨架、ECharts 雷达图、后端 API 到公网部署逐步完成。
+          开发过程中进行过多次内部迭代，这些属于本作品自身的优化。
+        </p>
+      </div>
+
+      <div class="mini-label" style="margin-top: 5mm">本项目自身的优化过程</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <b>阶段一：界面骨架</b>
+          <p>先完成毛玻璃双栏布局、日记输入区和双宠物气泡，确认页面可运行。</p>
+        </div>
+        <div class="timeline-item">
+          <b>阶段二：雷达图表</b>
+          <p>用假数据先验证 ECharts 五维雷达、发光效果和响应式更新。</p>
+        </div>
+        <div class="timeline-item">
+          <b>阶段三：真实 AI</b>
+          <p>加入严格 Prompt、JSON 契约、后端代理和双 Agent 对话渲染。</p>
+        </div>
+        <div class="timeline-item">
+          <b>阶段四：安全与部署</b>
+          <p>把 Key 从前端移到服务端，增加校验、限流和单链接云部署。</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>优化重点：</strong>安全上从“前端直连模型”调整为“服务端代理 + 云端 Secret”；
+        部署上从多个不可访问地址收敛为一个稳定演示网址；
+        交互上补齐 Loading、错误提示、图表清理和聊天气泡动画。
+      </div>
+
+      <div class="final-quote" style="margin-top: 4mm">
+        <strong>作品一句话介绍</strong>
+        <p>
+          心屿是一款面向年轻人的双 Agent 情绪陪伴应用：它让感性伙伴接住感受，
+          让理性伙伴给出行动建议，并用发光情绪雷达把“此刻的自己”直观呈现出来。
+        </p>
+      </div>
+
+      <div class="page-footer">
+        <span>心屿 · AI 桌面情绪陪伴应用</span>
+        <span class="page-number">07</span>
+      </div>
+    </section>
+  </body>
+</html>

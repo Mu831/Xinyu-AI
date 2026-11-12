@@ -6,6 +6,8 @@ dist/
 .env.local
 .vercel/
 *.log
+docs/*-preview.png
+docs/technical-document-page1.png
 .DS_Store
 .vscode/
 
