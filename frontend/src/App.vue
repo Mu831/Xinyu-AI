@@ -1,4 +1,5 @@
 <script setup>
+import { saveHistoryData } from './utils/historyStorage'
 import {
   computed,
   nextTick,
@@ -401,6 +402,18 @@ const startCompanion = async () => {
     updateRadarChart(result.emotions)
     dialogue.value = result.dialogue
     await scrollChatToBottom()
+
+    try {
+      const saved = saveHistoryData({
+        diary,
+        emotions: result.emotions,
+        dialogue: result.dialogue,
+      })
+
+      console.log('历史记录已保存：', saved.record.id)
+    } catch (storageError) {
+      console.error('历史记录保存失败：', storageError)
+    }
   } catch (error) {
     if (error?.name === 'AbortError') return
 
