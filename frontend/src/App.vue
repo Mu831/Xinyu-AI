@@ -4,6 +4,11 @@ import {
   saveHistoryData,
 } from './utils/historyStorage'
 import {
+  createDefaultCompanionProfile,
+  loadCompanionProfile,
+  saveCompanionProfile,
+} from './utils/companionProfile'
+import {
   computed,
   nextTick,
   onBeforeUnmount,
@@ -89,6 +94,34 @@ const historyCursor = ref(
 )
 const selectedHistoryDate = ref('')
 const selectedHistoryRecordId = ref('')
+
+const MAX_AVATAR_FILE_SIZE = 8 * 1024 * 1024
+const AVATAR_SIZE = 320
+
+const isCompanionOpen = ref(false)
+const companionError = ref('')
+const avatarInputRefs = {
+  feel: ref(null),
+  logic: ref(null),
+}
+const companionProfile = reactive(loadCompanionProfile())
+const companionDraft = reactive(
+  createDefaultCompanionProfile(),
+)
+const companionEditors = [
+  {
+    role: 'feel',
+    title: '感性伙伴',
+    description: '接住感受，先陪你待一会儿',
+    accent: 'rose',
+  },
+  {
+    role: 'logic',
+    title: '理性伙伴',
+    description: '理清线索，陪你找到下一步',
+    accent: 'sky',
+  },
+]
 
 let radarChart = null
 let resizeObserver = null
@@ -531,6 +564,10 @@ const loadHistoryRecords = () => {
 }
 
 const openHistory = () => {
+  if (isCompanionOpen.value) {
+    closeCompanion()
+  }
+
   loadHistoryRecords()
   historyCursor.value = new Date(
     new Date().getFullYear(),
@@ -572,9 +609,125 @@ const selectHistoryDay = (day) => {
   selectHistoryRecord(day.records[0])
 }
 
+const getCompanion = (role) =>
+  companionProfile[role] ?? companionProfile.feel
+
+const copyProfileToDraft = () => {
+  companionDraft.feel.name = companionProfile.feel.name
+  companionDraft.feel.avatar = companionProfile.feel.avatar
+  companionDraft.logic.name = companionProfile.logic.name
+  companionDraft.logic.avatar = companionProfile.logic.avatar
+}
+
+const openCompanion = () => {
+  if (isHistoryOpen.value) {
+    closeHistory()
+  }
+
+  copyProfileToDraft()
+  companionError.value = ''
+  isCompanionOpen.value = true
+  document.body.style.overflow = 'hidden'
+}
+
+const closeCompanion = () => {
+  isCompanionOpen.value = false
+  companionError.value = ''
+  document.body.style.overflow = ''
+}
+
+const setAvatarInputRef = (role, element) => {
+  avatarInputRefs[role].value = element
+}
+
+const triggerAvatarPicker = (role) => {
+  avatarInputRefs[role]?.value?.click()
+}
+
+const createAvatarDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+
+    image.onload = () => {
+      const side = Math.min(image.naturalWidth, image.naturalHeight)
+      const sourceX = (image.naturalWidth - side) / 2
+      const sourceY = (image.naturalHeight - side) / 2
+      const canvas = document.createElement('canvas')
+      canvas.width = AVATAR_SIZE
+      canvas.height = AVATAR_SIZE
+
+      const context = canvas.getContext('2d')
+      context.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        side,
+        side,
+        0,
+        0,
+        AVATAR_SIZE,
+        AVATAR_SIZE,
+      )
+      URL.revokeObjectURL(objectUrl)
+      resolve(canvas.toDataURL('image/webp', 0.82))
+    }
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('图片读取失败，请选择其他图片。'))
+    }
+
+    image.src = objectUrl
+  })
+
+const handleAvatarUpload = async (role, event) => {
+  const input = event.target
+  const file = input.files?.[0]
+  input.value = ''
+
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    companionError.value = '请选择图片文件。'
+    return
+  }
+
+  if (file.size > MAX_AVATAR_FILE_SIZE) {
+    companionError.value = '图片不能超过 8 MB。'
+    return
+  }
+
+  try {
+    companionError.value = ''
+    companionDraft[role].avatar = await createAvatarDataUrl(file)
+  } catch (error) {
+    companionError.value =
+      error instanceof Error ? error.message : '头像处理失败。'
+  }
+}
+
+const saveCompanionSettings = () => {
+  try {
+    const normalized = saveCompanionProfile(companionDraft)
+    companionProfile.feel = normalized.feel
+    companionProfile.logic = normalized.logic
+    closeCompanion()
+  } catch (error) {
+    companionError.value =
+      error?.name === 'QuotaExceededError'
+        ? '本地存储空间不足，请选择尺寸更小的图片。'
+        : error instanceof Error
+          ? error.message
+          : '伙伴设置保存失败。'
+  }
+}
+
 const handleHistoryKeydown = (event) => {
   if (event.key === 'Escape' && isHistoryOpen.value) {
     closeHistory()
+  } else if (event.key === 'Escape' && isCompanionOpen.value) {
+    closeCompanion()
   }
 }
 
@@ -824,6 +977,34 @@ onBeforeUnmount(() => {
                 往日
               </button>
 
+              <button
+                type="button"
+                class="group flex items-center gap-2 rounded-full border border-white/85 bg-white/45 px-3.5 py-2 text-xs font-semibold text-rose-600 shadow-sm backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white/70 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-rose-200/60"
+                aria-haspopup="dialog"
+                @click="openCompanion"
+              >
+                <svg
+                  class="h-4 w-4 text-rose-400 transition group-hover:scale-110"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M12 20s-7-4.25-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 10c0 5.75-7 10-7 10Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M8.5 7.5h.01M15.5 7.5h.01"
+                    stroke="currentColor"
+                    stroke-width="2.4"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                与你
+              </button>
+
               <div
                 class="hidden items-center gap-1.5 rounded-full border border-white/80 bg-white/40 px-3 py-2 backdrop-blur md:flex"
                 aria-hidden="true"
@@ -942,14 +1123,8 @@ onBeforeUnmount(() => {
               >
                 <span>{{ message.role === 'feel' ? '感' : '理' }}</span>
                 <img
-                  :src="
-                    message.role === 'feel'
-                      ? 'https://api.dicebear.com/7.x/bottts/svg?seed=Felix'
-                      : 'https://api.dicebear.com/7.x/bottts/svg?seed=Aneka'
-                  "
-                  :alt="
-                    message.role === 'feel' ? '感性宠物头像' : '理性宠物头像'
-                  "
+                  :src="getCompanion(message.role).avatar"
+                  :alt="`${getCompanion(message.role).name}的头像`"
                   class="absolute inset-0 h-full w-full object-cover"
                   @error="$event.currentTarget.style.display = 'none'"
                 />
@@ -966,7 +1141,7 @@ onBeforeUnmount(() => {
                       message.role === 'feel' ? 'text-rose-500' : 'text-sky-600'
                     "
                   >
-                    {{ message.role === 'feel' ? '感性伙伴' : '理性伙伴' }}
+                    {{ getCompanion(message.role).name }}
                   </span>
                   <span class="text-[10px] text-slate-400">
                     {{ message.role === 'feel' ? 'FEEL' : 'LOGIC' }}
@@ -1326,26 +1501,207 @@ onBeforeUnmount(() => {
                       :class="message.role === 'logic' ? 'flex-row-reverse' : ''"
                     >
                       <div
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/90 text-[10px] font-bold shadow-sm"
+                        class="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/90 text-[10px] font-bold shadow-sm"
                         :class="message.role === 'feel'
                           ? 'bg-rose-100 text-rose-500'
                           : 'bg-sky-100 text-sky-600'"
                       >
-                        {{ message.role === 'feel' ? '感' : '理' }}
+                        <span>{{ message.role === 'feel' ? '感' : '理' }}</span>
+                        <img
+                          :src="getCompanion(message.role).avatar"
+                          :alt="`${getCompanion(message.role).name}的头像`"
+                          class="absolute inset-0 h-full w-full object-cover"
+                          @error="$event.currentTarget.style.display = 'none'"
+                        />
                       </div>
                       <div
-                        class="max-w-[84%] rounded-2xl border px-3.5 py-2.5 text-xs leading-6 shadow-sm"
+                        class="flex max-w-[84%] flex-col"
                         :class="message.role === 'feel'
-                          ? 'rounded-tl-sm border-white/85 bg-white/60 text-slate-600'
-                          : 'rounded-tr-sm border-sky-100/90 bg-sky-50/70 text-slate-600'"
+                          ? 'items-start'
+                          : 'items-end'"
                       >
-                        {{ message.content }}
+                        <p
+                          class="mb-1 text-[10px] font-semibold"
+                          :class="message.role === 'feel'
+                            ? 'text-rose-500'
+                            : 'text-sky-600'"
+                        >
+                          {{ getCompanion(message.role).name }}
+                        </p>
+                        <div
+                          class="rounded-2xl border px-3.5 py-2.5 text-xs leading-6 shadow-sm"
+                          :class="message.role === 'feel'
+                            ? 'rounded-tl-sm border-white/85 bg-white/60 text-slate-600'
+                            : 'rounded-tr-sm border-sky-100/90 bg-sky-50/70 text-slate-600'"
+                        >
+                          {{ message.content }}
+                        </div>
                       </div>
                     </article>
                   </div>
                 </section>
               </div>
             </aside>
+          </section>
+        </div>
+      </Teleport>
+
+      <Teleport to="body">
+        <div
+          v-if="isCompanionOpen"
+          class="history-backdrop fixed inset-0 z-50 flex items-center justify-center bg-[#302a45]/30 p-3 backdrop-blur-md sm:p-6"
+          @click.self="closeCompanion"
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="companion-title"
+            class="history-modal-panel max-h-[92vh] w-full max-w-3xl overflow-y-auto overscroll-contain rounded-[2rem] border border-white/80 bg-[#f8f5ff]/85 p-5 shadow-[0_30px_100px_rgba(48,37,82,0.35)] backdrop-blur-2xl sm:p-7"
+          >
+            <header class="flex items-start justify-between gap-4">
+              <div>
+                <p
+                  class="text-[10px] font-semibold uppercase tracking-[0.24em] text-rose-400"
+                >
+                  TWO OF US
+                </p>
+                <h2
+                  id="companion-title"
+                  class="mt-1 text-2xl font-bold tracking-tight text-slate-700"
+                >
+                  与你
+                </h2>
+                <p class="mt-1.5 text-xs leading-5 text-slate-400">
+                  把两位伙伴变成你熟悉、喜欢的样子。
+                </p>
+              </div>
+
+              <button
+                type="button"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/85 bg-white/55 text-lg text-slate-500 shadow-sm backdrop-blur transition hover:bg-white/80 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-violet-200/60"
+                aria-label="关闭与你设置"
+                @click="closeCompanion"
+              >
+                ×
+              </button>
+            </header>
+
+            <div class="mt-6 grid gap-4 md:grid-cols-2">
+              <article
+                v-for="partner in companionEditors"
+                :key="partner.role"
+                class="rounded-[1.6rem] border bg-white/35 p-4 shadow-sm backdrop-blur sm:p-5"
+                :class="partner.role === 'feel'
+                  ? 'border-rose-100/90'
+                  : 'border-sky-100/90'"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p
+                      class="text-xs font-bold"
+                      :class="partner.role === 'feel'
+                        ? 'text-rose-500'
+                        : 'text-sky-600'"
+                    >
+                      {{ partner.title }}
+                    </p>
+                    <p class="mt-1 text-[10px] leading-4 text-slate-400">
+                      {{ partner.description }}
+                    </p>
+                  </div>
+                  <span
+                    class="rounded-full border border-white/80 bg-white/50 px-2 py-1 text-[9px] font-semibold tracking-wider text-slate-400"
+                  >
+                    {{ partner.role.toUpperCase() }}
+                  </span>
+                </div>
+
+                <div class="mt-5 flex flex-col items-center">
+                  <div
+                    class="relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-[2rem] border-4 border-white/90 text-2xl font-bold shadow-xl"
+                    :class="partner.role === 'feel'
+                      ? 'bg-gradient-to-br from-rose-200 to-pink-300 text-rose-500 shadow-rose-200/60'
+                      : 'bg-gradient-to-br from-sky-200 to-cyan-300 text-sky-600 shadow-sky-200/60'"
+                  >
+                    <span>{{ partner.role === 'feel' ? '感' : '理' }}</span>
+                    <img
+                      :src="companionDraft[partner.role].avatar"
+                      :alt="`${companionDraft[partner.role].name}的头像预览`"
+                      class="absolute inset-0 h-full w-full object-cover"
+                      @error="$event.currentTarget.style.display = 'none'"
+                    />
+                  </div>
+
+                  <p class="mt-4 text-[11px] font-semibold text-slate-500">
+                    伙伴的样子是
+                  </p>
+                  <button
+                    type="button"
+                    class="mt-2 rounded-full border border-white/90 bg-white/60 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/90 hover:shadow-md focus:outline-none focus:ring-4"
+                    :class="partner.role === 'feel'
+                      ? 'focus:ring-rose-200/60'
+                      : 'focus:ring-sky-200/60'"
+                    @click="triggerAvatarPicker(partner.role)"
+                  >
+                    从本地选择图片
+                  </button>
+                  <input
+                    :ref="(element) => setAvatarInputRef(partner.role, element)"
+                    type="file"
+                    accept="image/*"
+                    class="sr-only"
+                    :aria-label="`${partner.title}的图片文件`"
+                    @change="handleAvatarUpload(partner.role, $event)"
+                  />
+                  <p class="mt-2 text-center text-[9px] leading-4 text-slate-400">
+                    会自动裁剪为正方形并压缩，支持 8 MB 以内的图片
+                  </p>
+                </div>
+
+                <label class="mt-5 block">
+                  <span class="text-[11px] font-semibold text-slate-500">
+                    伙伴的名字是
+                  </span>
+                  <input
+                    v-model="companionDraft[partner.role].name"
+                    type="text"
+                    maxlength="12"
+                    class="mt-2 w-full rounded-2xl border border-white/85 bg-white/55 px-4 py-3 text-sm font-semibold text-slate-700 shadow-inner shadow-violet-900/5 outline-none transition placeholder:text-slate-400 focus:bg-white/80 focus:ring-4"
+                    :class="partner.role === 'feel'
+                      ? 'focus:border-rose-200 focus:ring-rose-200/50'
+                      : 'focus:border-sky-200 focus:ring-sky-200/50'"
+                    :placeholder="partner.role === 'feel' ? 'FEEL' : 'LOGIC'"
+                  />
+                </label>
+              </article>
+            </div>
+
+            <div
+              v-if="companionError"
+              class="mt-4 rounded-xl border border-rose-200/80 bg-rose-50/70 px-3.5 py-2.5 text-xs leading-5 text-rose-600"
+              role="alert"
+            >
+              {{ companionError }}
+            </div>
+
+            <footer
+              class="mt-6 flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end"
+            >
+              <button
+                type="button"
+                class="rounded-2xl border border-white/90 bg-white/45 px-5 py-3 text-sm font-semibold text-slate-500 backdrop-blur transition hover:bg-white/75 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-violet-200/50"
+                @click="closeCompanion"
+              >
+                先不改了
+              </button>
+              <button
+                type="button"
+                class="rounded-2xl bg-gradient-to-r from-rose-400/90 to-violet-500/90 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-300/30 transition hover:brightness-105 active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-rose-200/60"
+                @click="saveCompanionSettings"
+              >
+                保存我们的样子
+              </button>
+            </footer>
           </section>
         </div>
       </Teleport>
